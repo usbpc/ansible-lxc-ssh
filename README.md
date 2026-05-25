@@ -41,13 +41,30 @@ container ansible_host=server ansible_connection=lxc_ssh lxc_host=container
 
 ## Fork
 
-This is a fork from the original plugin:
+This is a fork from the forked plugin plugin:
 
-[ansible-lxc-ssh by Pierre Chifflier](https://github.com/chifflier/ansible-lxc-ssh)
+[ansible-lxc-ssh by Andreas Scherbaum](https://github.com/andreasscherbaum/ansible-lxc-ssh)
 
-This fork incorporates a few PRs from the original version, which (April 2017) were never
-applied. It also works with LXC version 1 (using `lxc-*`) and LXC version 2 (just using
-a single `lxc` binary). The version is autodetected on runtime.
+This fork adds the option `host_become_method`. It is inspired by the 
+[`proxmox_become_method` parameter from proxmox_pct_remote connection plugin](https://docs.ansible.com/projects/ansible/latest/collections/community/proxmox/proxmox_pct_remote_connection.html#parameter-proxmox_become_method).
+
+The default for `host_become_method` is an empty string and dosen't change the behaviour
+of the plugin at all. Setting it to `sudo` prefixes all `lxc-attach` commands with `sudo`.
+
+For it to work the user ansible connects with needs to have password less access 
+to execute `sudo lxc-attach`. Assuming the connection user is `ansible` this can
+be configured using the following task:
+
+```yaml
+- name: Add sudoers entry for ansible user
+  ansible.builtin.copy:
+    content: 'ansible ALL = (root) NOPASSWD: /usr/bin/lxc-attach'
+    dest: /etc/sudoers.d/ansible_lxc
+    owner: root
+    group: root
+    mode: '0440'
+
+```
 
 ## How to create a container
 
@@ -55,7 +72,7 @@ The following is an extract from a Playbook which creates a container. First the
 
 ```
 [containers]
-web ansible_host=physical.host lxc_host=web
+web ansible_host=physical.host lxc_host=web host_become_method=sudo
 ```
 
 The Playbook:
