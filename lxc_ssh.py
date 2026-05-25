@@ -401,6 +401,13 @@ DOCUMENTATION = """
         cli:
           - name: lxc_host
           - name: lxc_container
+      host_become_method:
+        description:
+          - Become command used on the host
+        type: str
+        default: ''
+        vars:
+          - name: host_become_method
 """
 
 
@@ -515,16 +522,19 @@ class Connection(ConnectionBase):
 
     def _set_command_prefix(self):
         # check for cgroupv2 and use systemd-run to run the commands if needed
+        if self.get_option("host_become_method") == "sudo":
+          self.run_prefix = ('sudo -- ')
+          return
         (returncode_cgroup, stdout_cgroup, stderr_cgroup) = self._exec_command(
             "stat /sys/fs/cgroup/cgroup.controllers", None, False
         )
         cgroup2 = returncode_cgroup == 0
         if cgroup2:
-            self.systemd_run_prefix = (
+            self.run_prefix = (
                 'systemd-run --quiet --user --scope --property="Delegate=yes" -- '
             )
         else:
-            self.systemd_run_prefix = ""
+            self.run_prefix = ""
 
     def _set_version(self):
         # LXC v1 uses 'lxc-info', 'lxc-attach' and so on
@@ -1366,13 +1376,13 @@ class Connection(ConnectionBase):
         h = self.container_name
         if self.lxc_version == 2:
             lxc_cmd = "%slxc exec %s --mode=non-interactive -- /bin/sh -c %s" % (
-                self.systemd_run_prefix,
+                self.run_prefix,
                 shlex.quote(h),
                 shlex.quote(cmd),
             )
         elif self.lxc_version == 1:
             lxc_cmd = "%slxc-attach --name %s -- /bin/sh -c %s" % (
-                self.systemd_run_prefix,
+                self.run_prefix,
                 shlex.quote(h),
                 shlex.quote(cmd),
             )
@@ -1406,13 +1416,13 @@ class Connection(ConnectionBase):
             h = self.container_name
             if self.lxc_version == 2:
                 lxc_cmd = "%slxc exec %s --mode=non-interactive -- /bin/sh -c %s" % (
-                    self.systemd_run_prefix,
+                    self.run_prefix,
                     shlex.quote(h),
                     shlex.quote(cmd),
                 )
             elif self.lxc_version == 1:
                 lxc_cmd = "%slxc-attach --name %s -- /bin/sh -c %s" % (
-                    self.systemd_run_prefix,
+                    self.run_prefix,
                     shlex.quote(h),
                     shlex.quote(cmd),
                 )
@@ -1435,13 +1445,13 @@ class Connection(ConnectionBase):
         h = self.container_name
         if self.lxc_version == 2:
             lxc_cmd = "%slxc exec %s --mode=non-interactive -- /bin/sh -c %s" % (
-                self.systemd_run_prefix,
+                self.run_prefix,
                 shlex.quote(h),
                 shlex.quote(cmd),
             )
         elif self.lxc_version == 1:
             lxc_cmd = "%slxc-attach --name %s -- /bin/sh -c %s" % (
-                self.systemd_run_prefix,
+                self.run_prefix,
                 shlex.quote(h),
                 shlex.quote(cmd),
             )
